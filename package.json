@@ -3,16 +3,19 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon sever.js"
+    "start:dev": "nodemon sever.js",
+    "start:prod": "cross-env NODE_ENV=production node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-async-handler": "^1.2.0",
+    "express-validator": "^7.3.2",
     "i": "^0.3.7",
     "mongoose": "^9.4.1",
     "mongose": "^0.0.2-security",
@@ -20,6 +23,15 @@
     "slugify": "^1.6.9"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react": "^7.37.5",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.8.3"
   }
 }
