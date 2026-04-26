@@ -1,5 +1,5 @@
 const express = require('express');
-const { param, validationResult } = require('express-validator');
+
 const { getCategories, createCategory, getCategoriey, updateCategory, deleteCategory } = require('../services/categoryService')
 const { getCategoryValidator, createCategoryValidator, updateCategoryValidator, deleteCategoryValidator } = require('../utils/validators/categoryValidator')
 

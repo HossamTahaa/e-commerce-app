@@ -13,6 +13,7 @@ const subCategorySchema = new mongoose.Schema(
       type: String,
       lowercase: true,
     },
+    // it nescssary to take the parent category
     category: {
       type: mongoose.Schema.ObjectId,
       ref: "Category",
@@ -22,4 +23,4 @@ const subCategorySchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = moongose.model("SubCategroy", subCategorySchema);
+module.exports = mongoose.model("SubCategroy", subCategorySchema);
