@@ -4,21 +4,35 @@ const ApiError = require('../utils/apiError');
 
 const SubCategory = require('../models/subCategoryModel')
 
-//get subCategory, accsess Public
+  //create subCategoryBelongTo CategoryID(nested route)
+exports.setCategoryIdToBody = (req, res, next) => {
+     if(!req.body.category) req.body.category = req.params.categoryId;
+   next();
+}
+//get subCategoryBelongTo Categoryid (nested route)
+exports.createFilterObj = (req, res, next) =>{
+   let filterObject = {};
+  if(req.params.categoryId)  filterObject = { category: req.params.categoryId }
+  req.filterObj = filterObject;
+  next()
+}
+
+ //get all categories
+exports.getSubCategories = asyncHandler(async (req, res) => {
+  const page = req.query.page * 1 || 1;
+  const limit = req.query.limit * 1 || 5;
+  const skip = (page - 1) * limit;
+  const subCategory = await SubCategory.find( req.filterObj ).skip(skip).limit(limit) 
+  res.status(200).json({ results: subCategory.length, page, data: subCategory });
+});
+
+ //create subCategory, accsess private
 exports.createSubCategory = asyncHandler(async (req, res) => {
   const {name, category } = req.body;
   const subCategory = await SubCategory.create({ name, slug: slugify(name), category });
   res.status(201).json({ data: subCategory });
 });
-
-exports.getSubCategories = asyncHandler(async (req, res) => {
-  const page = req.query.page * 1 || 1;
-  const limit = req.query.limit * 1 || 5;
-  const skip = (page - 1) * limit;
-  const subCategory = await SubCategory.find({}).skip(skip).limit(limit).populate({ path: 'category', select: 'name -_id' });
-  res.status(200).json({ results: subCategory.length, page, data: subCategory });
-});
-
+  
 //@ Get subcategory by id
 exports.getSubCategoriey = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
