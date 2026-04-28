@@ -4,8 +4,10 @@ const morgan = require("morgan");
 const dbConnection = require("./config/data.base");
 const categoryRoute = require("./routes/categoryRoute");
 const subCategoryRoute = require ('./routes/subCategoryRoute');
+const brandyRoute = require ('./routes/brandRoute')
 const ApiError = require("./utils/apiError");
 const globalError = require("./middleware/errorMiddleware");
+
 dotenv.config({ path: "config.env" });
 
 
@@ -20,9 +22,10 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
   console.log(`mode: ${process.env.NODE_ENV}`);
 }
-//routes
+//Mount Routes
 app.use("/api/v1/categories", categoryRoute);
 app.use("/api/v1/subCategory", subCategoryRoute);
+app.use("/api/v1/brand", brandyRoute);
  
 //if the path worng
 app.use((req, res, next) => {
