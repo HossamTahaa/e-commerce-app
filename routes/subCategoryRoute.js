@@ -1,12 +1,13 @@
 const express = require('express');
 
-const { getSubCategories, getSubCategoriey, createSubCategory, updateSubCategory, deleteSubCategory, setCategoryIdToBody,createFilterObj } = require('../services/subCategoryService')
+const { getSubCategories, getSubCategory, createSubCategory, updateSubCategory, deleteSubCategory, setCategoryIdToBody, createFilterObj } = require('../services/subCategoryService')
 const { createSubCategoryValidator, getSubCategoryValidator,updateSubCategoryValidator, deleteSubCategoryValidator } = require('../utils/validators/subCategoryValidator')
 
 // to access paramters on other routers, to access catrgoryid form catrgoy
 const router = express.Router({ mergeParams: true });
 
-router.route('/').get(getSubCategories).post(createFilterObj, setCategoryIdToBody, createSubCategoryValidator, createSubCategory)
-router.route('/:id').get(getSubCategoryValidator, getSubCategoriey).put(updateSubCategoryValidator, updateSubCategory).delete(deleteSubCategoryValidator, deleteSubCategory)
+// createFilterObj belongs on GET (it builds the filter), setCategoryIdToBody on POST
+router.route('/').get(createFilterObj, getSubCategories).post(setCategoryIdToBody, createSubCategoryValidator, createSubCategory)
+router.route('/:id').get(getSubCategoryValidator, getSubCategory).put(updateSubCategoryValidator, updateSubCategory).delete(deleteSubCategoryValidator, deleteSubCategory)
 
-module.exports = router 
+module.exports = router

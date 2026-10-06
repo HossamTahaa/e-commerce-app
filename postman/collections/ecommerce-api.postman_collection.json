@@ -1,0 +1,2202 @@
+{
+  "info": {
+    "name": "E-Commerce API v1",
+    "description": "Node / Express 5 / Mongoose e-commerce API.\n\nThe base URL comes from the {{baseUrl}} variable (default http://localhost:8000). Import the local environment next to this file, or edit the collection variable.\n\nEvery request is self-contained: creates store their id in a collection variable ({{categoryId}}, {{subCategoryId}}, {{brandId}}, {{productId}}), deletes clear it again, and the requests that need a parent category create one on the fly if there is none. So you can hit Send on anything, in any order, or run the whole collection with newman.\n\nAll list endpoints share the same query API: page, limit (capped at 100), sort, fields, keyword, plus any field filter with gte / gt / lte / lt.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Categories",
+      "description": "CRUD for /api/v1/categories. name: 3-32 chars, unique. The slug is generated from the name.",
+      "item": [
+        {
+          "name": "List categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "disabled": true,
+                  "description": "max 100"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "disabled": true,
+                  "description": "comma separated, - for descending"
+                },
+                {
+                  "key": "fields",
+                  "value": "name,slug",
+                  "disabled": true,
+                  "description": "projection"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "disabled": true,
+                  "description": "case-insensitive search"
+                }
+              ]
+            },
+            "description": "Paginated list. Response shape: { results, pagination: { currentPage, limit, numberOfPages, totalDocuments, nextPage?, prevPage? }, data }"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"returns pagination metadata\", () => {",
+                  "  pm.expect(body.pagination).to.include.keys(",
+                  "    \"currentPage\",",
+                  "    \"limit\",",
+                  "    \"numberOfPages\",",
+                  "    \"totalDocuments\",",
+                  "  );",
+                  "  pm.expect(body.data).to.be.an(\"array\");",
+                  "  pm.expect(body.results).to.eql(body.data.length);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories"
+              ]
+            },
+            "description": "Required: name (3-32, unique). Optional: image. Stores the new id in {{categoryId}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Electronics {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"categoryId\", body.data._id);",
+                  "console.log(\"categoryId =\", body.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get category by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"categoryId\")) {",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) =>",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Every field is optional but still validated when sent. The slug is regenerated with the name.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Electronics upd {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"categoryId\")) {",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) =>",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Returns 204 with an empty body, and clears {{categoryId}}."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"categoryId\")) {",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) =>",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));",
+                  "pm.collectionVariables.set(\"categoryId\", \"\");"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SubCategories",
+      "description": "CRUD for /api/v1/subcategories plus the nested form under a category. name: 2-32 chars, unique. category must be an existing category id.",
+      "item": [
+        {
+          "name": "List subcategories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/subcategories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subcategories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "disabled": true,
+                  "description": "max 100"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "disabled": true,
+                  "description": "comma separated, - for descending"
+                },
+                {
+                  "key": "fields",
+                  "value": "name,slug",
+                  "disabled": true,
+                  "description": "projection"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "disabled": true,
+                  "description": "case-insensitive search"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List subcategories of a category (nested)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}/subcategories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "{{categoryId}}",
+                "subcategories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "disabled": true,
+                  "description": "max 100"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "disabled": true,
+                  "description": "comma separated, - for descending"
+                },
+                {
+                  "key": "fields",
+                  "value": "name,slug",
+                  "disabled": true,
+                  "description": "projection"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "disabled": true,
+                  "description": "case-insensitive search"
+                }
+              ]
+            },
+            "description": "createFilterObj turns :categoryId into a { category } filter."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"categoryId\")) {",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) =>",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create subcategory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/subcategories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subcategories"
+              ]
+            },
+            "description": "Required: name (2-32, unique), category (must exist). Stores the new id in {{subCategoryId}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mobiles {{$timestamp}}\",\n  \"category\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"categoryId\")) {",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) =>",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"subCategoryId\", body.data._id);",
+                  "console.log(\"subCategoryId =\", body.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create subcategory under a category (nested)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}/subcategories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "{{categoryId}}",
+                "subcategories"
+              ]
+            },
+            "description": "setCategoryIdToBody copies :categoryId into the body, so category can be omitted here.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Laptops {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"categoryId\")) {",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) =>",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"subCategoryId\", body.data._id);",
+                  "console.log(\"subCategoryId =\", body.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get subcategory by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/subcategories/{{subCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subcategories",
+                "{{subCategoryId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "const withCategory = (cb) => {",
+                  "  const existing = pm.variables.get(\"categoryId\");",
+                  "  if (existing) return cb(existing);",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) => {",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id);",
+                  "    cb(category._id);",
+                  "  });",
+                  "};",
+                  "",
+                  "if (!pm.variables.get(\"subCategoryId\")) {",
+                  "  withCategory((categoryId) => {",
+                  "    post(",
+                  "      base + \"/categories/\" + categoryId + \"/subcategories\",",
+                  "      { name: \"Auto sub \" + stamp },",
+                  "      (sub) => pm.collectionVariables.set(\"subCategoryId\", sub._id),",
+                  "    );",
+                  "  });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update subcategory",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/subcategories/{{subCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subcategories",
+                "{{subCategoryId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Smart phones {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "const withCategory = (cb) => {",
+                  "  const existing = pm.variables.get(\"categoryId\");",
+                  "  if (existing) return cb(existing);",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) => {",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id);",
+                  "    cb(category._id);",
+                  "  });",
+                  "};",
+                  "",
+                  "if (!pm.variables.get(\"subCategoryId\")) {",
+                  "  withCategory((categoryId) => {",
+                  "    post(",
+                  "      base + \"/categories/\" + categoryId + \"/subcategories\",",
+                  "      { name: \"Auto sub \" + stamp },",
+                  "      (sub) => pm.collectionVariables.set(\"subCategoryId\", sub._id),",
+                  "    );",
+                  "  });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete subcategory",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/subcategories/{{subCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "subcategories",
+                "{{subCategoryId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "const withCategory = (cb) => {",
+                  "  const existing = pm.variables.get(\"categoryId\");",
+                  "  if (existing) return cb(existing);",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) => {",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id);",
+                  "    cb(category._id);",
+                  "  });",
+                  "};",
+                  "",
+                  "if (!pm.variables.get(\"subCategoryId\")) {",
+                  "  withCategory((categoryId) => {",
+                  "    post(",
+                  "      base + \"/categories/\" + categoryId + \"/subcategories\",",
+                  "      { name: \"Auto sub \" + stamp },",
+                  "      (sub) => pm.collectionVariables.set(\"subCategoryId\", sub._id),",
+                  "    );",
+                  "  });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));",
+                  "pm.collectionVariables.set(\"subCategoryId\", \"\");"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Brands",
+      "description": "CRUD for /api/v1/brands. name: 3-32 chars, unique.",
+      "item": [
+        {
+          "name": "List brands",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "disabled": true,
+                  "description": "max 100"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "disabled": true,
+                  "description": "comma separated, - for descending"
+                },
+                {
+                  "key": "fields",
+                  "value": "name,slug",
+                  "disabled": true,
+                  "description": "projection"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "disabled": true,
+                  "description": "case-insensitive search"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create brand",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands"
+              ]
+            },
+            "description": "Required: name (3-32, unique). Stores the new id in {{brandId}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Samsung {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"brandId\", body.data._id);",
+                  "console.log(\"brandId =\", body.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get brand by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/{{brandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "{{brandId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"brandId\")) {",
+                  "  post(base + \"/brands\", { name: \"Auto brand \" + stamp }, (brand) =>",
+                  "    pm.collectionVariables.set(\"brandId\", brand._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update brand",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/{{brandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "{{brandId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Samsung upd {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"brandId\")) {",
+                  "  post(base + \"/brands\", { name: \"Auto brand \" + stamp }, (brand) =>",
+                  "    pm.collectionVariables.set(\"brandId\", brand._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete brand",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/{{brandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "{{brandId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"brandId\")) {",
+                  "  post(base + \"/brands\", { name: \"Auto brand \" + stamp }, (brand) =>",
+                  "    pm.collectionVariables.set(\"brandId\", brand._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));",
+                  "pm.collectionVariables.set(\"brandId\", \"\");"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "description": "CRUD for /api/v1/products. Supports keyword search over title + description, field filters (price[gte] and friends), sort, field limiting and pagination.",
+      "item": [
+        {
+          "name": "List products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "disabled": true,
+                  "description": "max 100"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "disabled": true,
+                  "description": "comma separated, - for descending"
+                },
+                {
+                  "key": "fields",
+                  "value": "name,slug",
+                  "disabled": true,
+                  "description": "projection"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "disabled": true,
+                  "description": "case-insensitive search"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
+            },
+            "description": "The minimum a product needs: title (3-100), description (20-2000), quantity, price (max 20000), imageCover, category (must exist). Everything else is optional - see the next request for the full body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Samsung Galaxy S24 Ultra\",\n  \"description\": \"Flagship Android phone with a 6.8 inch display, 200MP camera and S-Pen support. Ships with a two year regional warranty.\",\n  \"quantity\": 25,\n  \"price\": 1199.99,\n  \"imageCover\": \"https://example.com/images/s24-ultra-cover.jpg\",\n  \"category\": \"{{categoryId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"categoryId\")) {",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) =>",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"productId\", body.data._id);",
+                  "console.log(\"productId =\", body.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create product with relations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
+            },
+            "description": "Full body. Optional on top of the minimum: sold, priceAfterDiscount (must be lower than price), colors[], images[], subcategories[] (every id must belong to the given category), brand (must exist), ratingsAverage (1-5), ratingsQuantity. The pre-request script creates a fresh category > subcategory > brand chain first, so the relations always line up.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Samsung Galaxy S24 Ultra 1TB\",\n  \"description\": \"Flagship Android phone with a 6.8 inch display, 200MP camera and S-Pen support. Ships with a two year regional warranty.\",\n  \"quantity\": 25,\n  \"sold\": 3,\n  \"price\": 1199.99,\n  \"priceAfterDiscount\": 1099,\n  \"colors\": [\n    \"black\",\n    \"titanium\"\n  ],\n  \"imageCover\": \"https://example.com/images/s24-ultra-cover.jpg\",\n  \"images\": [\n    \"https://example.com/images/s24-ultra-1.jpg\"\n  ],\n  \"category\": \"{{relCategoryId}}\",\n  \"subcategories\": [\n    \"{{relSubCategoryId}}\"\n  ],\n  \"brand\": \"{{relBrandId}}\",\n  \"ratingsAverage\": 4.5,\n  \"ratingsQuantity\": 12\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "post(base + \"/categories\", { name: \"Rel category \" + stamp }, (category) => {",
+                  "  pm.collectionVariables.set(\"relCategoryId\", category._id);",
+                  "  post(",
+                  "    base + \"/categories/\" + category._id + \"/subcategories\",",
+                  "    { name: \"Rel sub \" + stamp },",
+                  "    (sub) => {",
+                  "      pm.collectionVariables.set(\"relSubCategoryId\", sub._id);",
+                  "      post(base + \"/brands\", { name: \"Rel brand \" + stamp }, (brand) => {",
+                  "        pm.collectionVariables.set(\"relBrandId\", brand._id);",
+                  "      });",
+                  "    },",
+                  "  );",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"productId\", body.data._id);",
+                  "console.log(\"productId =\", body.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search products (keyword)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?keyword=samsung",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "samsung",
+                  "description": "matches title or description, case insensitive"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"every hit contains the keyword\", () => {",
+                  "  body.data.forEach((product) => {",
+                  "    const haystack = (product.title + product.description).toLowerCase();",
+                  "    pm.expect(haystack).to.include(\"samsung\");",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter products (price range)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?price[gte]=100&price[lte]=2000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "price[gte]",
+                  "value": "100"
+                },
+                {
+                  "key": "price[lte]",
+                  "value": "2000"
+                },
+                {
+                  "key": "ratingsAverage[gte]",
+                  "value": "4",
+                  "disabled": true
+                },
+                {
+                  "key": "brand",
+                  "value": "{{brandId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "category",
+                  "value": "{{categoryId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "gte / gt / lte / lt are rewritten into their mongo operators."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"every price is inside the range\", () => {",
+                  "  body.data.forEach((product) => {",
+                  "    pm.expect(product.price).to.be.at.least(100);",
+                  "    pm.expect(product.price).to.be.at.most(2000);",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sort and limit fields",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?sort=-price,title&fields=title,price,ratingsAverage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "-price,title"
+                },
+                {
+                  "key": "fields",
+                  "value": "title,price,ratingsAverage"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"sorted by price, highest first\", () => {",
+                  "  const prices = body.data.map((product) => product.price);",
+                  "  pm.expect(prices).to.eql([...prices].sort((a, b) => b - a));",
+                  "});",
+                  "pm.test(\"only the requested fields come back\", () => {",
+                  "  body.data.forEach((product) => {",
+                  "    pm.expect(product).to.not.have.property(\"description\");",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get product by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "description": "Populates the category name."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "const withCategory = (cb) => {",
+                  "  const existing = pm.variables.get(\"categoryId\");",
+                  "  if (existing) return cb(existing);",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) => {",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id);",
+                  "    cb(category._id);",
+                  "  });",
+                  "};",
+                  "",
+                  "if (!pm.variables.get(\"productId\")) {",
+                  "  withCategory((categoryId) => {",
+                  "    post(base + \"/products\", {",
+                  "      title: \"Auto product \" + stamp,",
+                  "      description: \"Placeholder product created automatically so this request can run on its own.\",",
+                  "      quantity: 10,",
+                  "      price: 100,",
+                  "      imageCover: \"https://example.com/images/placeholder.jpg\",",
+                  "      category: categoryId,",
+                  "    }, (product) => pm.collectionVariables.set(\"productId\", product._id));",
+                  "  });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "description": "All fields optional, same rules as create. The slug follows the title.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Samsung Galaxy S24 Ultra 512GB\",\n  \"price\": 1299\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "const withCategory = (cb) => {",
+                  "  const existing = pm.variables.get(\"categoryId\");",
+                  "  if (existing) return cb(existing);",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) => {",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id);",
+                  "    cb(category._id);",
+                  "  });",
+                  "};",
+                  "",
+                  "if (!pm.variables.get(\"productId\")) {",
+                  "  withCategory((categoryId) => {",
+                  "    post(base + \"/products\", {",
+                  "      title: \"Auto product \" + stamp,",
+                  "      description: \"Placeholder product created automatically so this request can run on its own.\",",
+                  "      quantity: 10,",
+                  "      price: 100,",
+                  "      imageCover: \"https://example.com/images/placeholder.jpg\",",
+                  "      category: categoryId,",
+                  "    }, (product) => pm.collectionVariables.set(\"productId\", product._id));",
+                  "  });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete product",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "{{productId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "const withCategory = (cb) => {",
+                  "  const existing = pm.variables.get(\"categoryId\");",
+                  "  if (existing) return cb(existing);",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) => {",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id);",
+                  "    cb(category._id);",
+                  "  });",
+                  "};",
+                  "",
+                  "if (!pm.variables.get(\"productId\")) {",
+                  "  withCategory((categoryId) => {",
+                  "    post(base + \"/products\", {",
+                  "      title: \"Auto product \" + stamp,",
+                  "      description: \"Placeholder product created automatically so this request can run on its own.\",",
+                  "      quantity: 10,",
+                  "      price: 100,",
+                  "      imageCover: \"https://example.com/images/placeholder.jpg\",",
+                  "      category: categoryId,",
+                  "    }, (product) => pm.collectionVariables.set(\"productId\", product._id));",
+                  "  });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));",
+                  "pm.collectionVariables.set(\"productId\", \"\");"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error cases",
+      "description": "Quick checks that the global error handler shapes responses the way it should.",
+      "item": [
+        {
+          "name": "404 - unknown route",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nope",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nope"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - invalid mongo id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/not-an-id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "not-an-id"
+              ]
+            },
+            "description": "Caught by the validator before it ever reaches mongoose."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 - id not found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/000000000000000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "000000000000000000000000"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - validation error (name too short)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories"
+              ]
+            },
+            "description": "Response shape: { errors: [ { type, msg, path, location } ] }",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ab\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - duplicate key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories"
+              ]
+            },
+            "description": "The pre-request script creates the same name first, so the unique index always trips and handleDuplicateKeyError turns it into a 400.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Duplicate me\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// create the name first so the request below always collides",
+                  "pm.sendRequest(",
+                  "  {",
+                  "    url: pm.variables.replaceIn(\"{{baseUrl}}/api/v1/categories\"),",
+                  "    method: \"POST\",",
+                  "    header: { \"Content-Type\": \"application/json\" },",
+                  "    body: { mode: \"raw\", raw: JSON.stringify({ name: \"Duplicate me\" }) },",
+                  "  },",
+                  "  () => {},",
+                  ");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - subcategory not belonging to category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Broken relation product\",\n  \"description\": \"Flagship Android phone with a 6.8 inch display, 200MP camera and S-Pen support. Ships with a two year regional warranty.\",\n  \"quantity\": 25,\n  \"price\": 1199.99,\n  \"imageCover\": \"https://example.com/images/s24-ultra-cover.jpg\",\n  \"category\": \"{{categoryId}}\",\n  \"subcategories\": [\n    \"000000000000000000000000\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.variables.replaceIn(\"{{baseUrl}}/api/v1\");",
+                  "const stamp = Date.now();",
+                  "",
+                  "const post = (url, body, cb) =>",
+                  "  pm.sendRequest(",
+                  "    {",
+                  "      url: url,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(body) },",
+                  "    },",
+                  "    (err, res) => {",
+                  "      if (err || res.code !== 201) {",
+                  "        console.error(\"auto-setup failed for \" + url);",
+                  "        return;",
+                  "      }",
+                  "      cb(res.json().data);",
+                  "    },",
+                  "  );",
+                  "",
+                  "if (!pm.variables.get(\"categoryId\")) {",
+                  "  post(base + \"/categories\", { name: \"Auto category \" + stamp }, (category) =>",
+                  "    pm.collectionVariables.set(\"categoryId\", category._id),",
+                  "  );",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "subCategoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "brandId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "relCategoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "relSubCategoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "relBrandId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

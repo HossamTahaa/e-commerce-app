@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const slugifyPlugin = require('../utils/slugifyPlugin');
 
 const productSchema = new mongoose.Schema(
   {
@@ -73,7 +74,19 @@ const productSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-  module.exports = mongoose.model('Product', productSchema);
+
+productSchema.plugin(slugifyPlugin, { from: 'title' });
+
+// Mongoose query middleware: before every find, add the category name
+// (normal function, not =>, so "this" is the query. Mongoose 9: no next())
+productSchema.pre(/^find/, function () {
+  this.populate({
+    path: 'category',
+    select: 'name -_id',
+  });
+});
+
+module.exports = mongoose.model('Product', productSchema);
     // to enable virtual populate
 //     toJSON: { virtuals: true },
 //     toObject: { virtuals: true },

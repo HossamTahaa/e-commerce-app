@@ -1,23 +1,27 @@
 const mongoose = require("mongoose");
+const slugifyPlugin = require("../utils/slugifyPlugin");
 
 const categorySchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      require: [true, "Category require"],
-      unique: [true, "Category must be unique"],
-      minLength: [3, "Too short category name"],
-      maxLenth: [25, "Too long category name"],
+      required: [true, "Category name is required"],
+      trim: true,
+      unique: true,
+      minlength: [3, "Too short category name"],
+      maxlength: [32, "Too long category name"],
     },
     slug: {
       type: String,
       lowercase: true,
     },
-    iamges: String,
+    image: String,
   },
 
   { timestamps: true },
 );
+
+categorySchema.plugin(slugifyPlugin, { from: "name" });
 
 const CategoryModel = mongoose.model("Category", categorySchema);
 

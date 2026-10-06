@@ -1,48 +1,56 @@
-const slugify = require("slugify");
-const { check, body } = require("express-validator");
+const { check } = require("express-validator");
 const validatorMiddleware = require("../../middleware/validatorMiddleware");
 const Category = require("../../models/categoryModel");
 const SubCategory = require("../../models/subCategoryModel");
+const Brand = require("../../models/brandModel");
 
-exports.createProductValidator = [
-  check("title")
+// create requires the core fields, update reuses the exact same rules but
+// makes everything optional - so the two can never drift apart
+const requiredOr = (chain, optional, message) =>
+  optional ? chain.optional() : chain.notEmpty().withMessage(message);
+
+const productRules = (optional) => [
+  requiredOr(check("title"), optional, "Product required")
     .isLength({ min: 3 })
     .withMessage("must be at least 3 chars")
-    .notEmpty()
-    .withMessage("Product required")
-    .custom((val, { req }) => {
-      req.body.slug = slugify(val);
-      return true;
-    }),
-  check("description")
-    .notEmpty()
-    .withMessage("Product description is required")
+    .isLength({ max: 100 })
+    .withMessage("Too long product title"),
+
+  requiredOr(
+    check("description"),
+    optional,
+    "Product description is required",
+  )
+    .isLength({ min: 20 })
+    .withMessage("Too short description")
     .isLength({ max: 2000 })
     .withMessage("Too long description"),
-  check("quantity")
-    .notEmpty()
-    .withMessage("Product quantity is required")
-    .isNumeric()
-    .withMessage("Product quantity must be a number"),
+
+  requiredOr(check("quantity"), optional, "Product quantity is required")
+    .isInt({ min: 0 })
+    .withMessage("Product quantity must be a positive number"),
+
   check("sold")
     .optional()
-    .isNumeric()
-    .withMessage("Product quantity must be a number"),
-  check("price")
-    .notEmpty()
-    .withMessage("Product price is required")
+    .isInt({ min: 0 })
+    .withMessage("Product sold must be a positive number"),
+
+  requiredOr(check("price"), optional, "Product price is required")
     .isNumeric()
     .withMessage("Product price must be a number")
     .toFloat()
-    .isFloat({ max: 200000 })
+    // must match the max in productModel (20000) or mongoose rejects it later
+    .isFloat({ min: 0, max: 20000 })
     .withMessage("Too long price"),
+
   check("priceAfterDiscount")
     .optional()
     .isNumeric()
     .withMessage("Product priceAfterDiscount must be a number")
     .toFloat()
     .custom((value, { req }) => {
-      if (req.body.price <= value) {
+      // on update the price may not be in the body - nothing to compare against
+      if (req.body.price !== undefined && req.body.price <= value) {
         throw new Error("priceAfterDiscount must be lower than price");
       }
       return true;
@@ -52,14 +60,19 @@ exports.createProductValidator = [
     .optional()
     .isArray()
     .withMessage("availableColors should be array of string"),
-  check("imageCover").notEmpty().withMessage("Product imageCover is required"),
+
+  requiredOr(check("imageCover"), optional, "Product imageCover is required"),
+
   check("images")
     .optional()
     .isArray()
     .withMessage("images should be array of string"),
-  check("category")
-    .notEmpty()
-    .withMessage("Product must be belong to a category")
+
+  requiredOr(
+    check("category"),
+    optional,
+    "Product must be belong to a category",
+  )
     .isMongoId()
     .withMessage("Invalid ID formate")
     .custom((categoryId) =>
@@ -72,52 +85,65 @@ exports.createProductValidator = [
       }),
     ),
 
+  // subcategories is an array, so isMongoId must run on each element (".*")
   check("subcategories")
     .optional()
+    .isArray()
+    .withMessage("subcategories should be an array of ids"),
+  check("subcategories.*")
+    .optional()
     .isMongoId()
-    .withMessage("Invalid ID formate")
+    .withMessage("Invalid subcategory ID formate"),
+  check("subcategories")
+    .optional()
     .custom((subcategoriesIds) =>
-      SubCategory.find({ _id: { $exists: true, $in: subcategoriesIds } }).then(
-        (result) => {
-          if (result.length < 1 || result.length !== subcategoriesIds.length) {
-            return Promise.reject(new Error(`Invalid subcategories Ids`));
-          }
-        },
-      ),
+      SubCategory.find({ _id: { $in: subcategoriesIds } }).then((result) => {
+        if (result.length !== subcategoriesIds.length) {
+          return Promise.reject(new Error(`Invalid subcategories Ids`));
+        }
+      }),
     )
-    .custom((val, { req }) =>
-      SubCategory.find({ category: req.body.category }).then(
+    .custom((subcategoriesIds, { req }) => {
+      // without a category in the body there is nothing to check them against
+      if (!req.body.category) return true;
+
+      return SubCategory.find({ category: req.body.category }).then(
         (subcategories) => {
-          const subCategoriesIdsInDB = [];
-          subcategories.forEach((subCategory) => {
-            subCategoriesIdsInDB.push(subCategory._id.toString());
-          });
-          // check if subcategories ids in db include subcategories in req.body (true)
-          const checker = (target, arr) => target.every((v) => arr.includes(v));
-          if (!checker(val, subCategoriesIdsInDB)) {
+          const idsInDB = subcategories.map((sub) => sub._id.toString());
+          const allBelong = subcategoriesIds.every((id) =>
+            idsInDB.includes(id),
+          );
+          if (!allBelong) {
             return Promise.reject(
               new Error(`subcategories not belong to category`),
             );
           }
         },
-      ),
+      );
+    }),
+
+  check("brand")
+    .optional()
+    .isMongoId()
+    .withMessage("Invalid ID formate")
+    .custom((brandId) =>
+      Brand.findById(brandId).then((brand) => {
+        if (!brand) {
+          return Promise.reject(new Error(`No brand for this id: ${brandId}`));
+        }
+      }),
     ),
 
-  check("brand").optional().isMongoId().withMessage("Invalid ID formate"),
+  // isLength is for strings - a number range needs isFloat
   check("ratingsAverage")
     .optional()
-    .isNumeric()
-    .withMessage("ratingsAverage must be a number")
-    .isLength({ min: 1 })
-    .withMessage("Rating must be above or equal 1.0")
-    .isLength({ max: 5 })
-    .withMessage("Rating must be below or equal 5.0"),
+    .isFloat({ min: 1, max: 5 })
+    .withMessage("Rating must be between 1.0 and 5.0"),
+
   check("ratingsQuantity")
     .optional()
-    .isNumeric()
-    .withMessage("ratingsQuantity must be a number"),
-
-  validatorMiddleware,
+    .isInt({ min: 0 })
+    .withMessage("ratingsQuantity must be a positive number"),
 ];
 
 exports.getProductValidator = [
@@ -125,14 +151,14 @@ exports.getProductValidator = [
   validatorMiddleware,
 ];
 
+exports.createProductValidator = [
+  ...productRules(false),
+  validatorMiddleware,
+];
+
 exports.updateProductValidator = [
   check("id").isMongoId().withMessage("Invalid ID formate"),
-  body("title")
-    .optional()
-    .custom((val, { req }) => {
-      req.body.slug = slugify(val);
-      return true;
-    }),
+  ...productRules(true),
   validatorMiddleware,
 ];
 

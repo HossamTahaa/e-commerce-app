@@ -1,11 +1,13 @@
 const mongoose = require("mongoose");
+const slugifyPlugin = require("../utils/slugifyPlugin");
 
 const subCategorySchema = new mongoose.Schema(
   {
     name: {
       type: String,
+      required: [true, "SubCategory name is required"],
       trim: true,
-      unique: [true, "SubCategory must be unique"],
+      unique: true,
       minlength: [2, "To short SubCategory name"],
       maxlength: [32, "Too long SubCategory name"],
     },
@@ -23,4 +25,6 @@ const subCategorySchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model("SubCategroy", subCategorySchema);
+subCategorySchema.plugin(slugifyPlugin, { from: "name" });
+
+module.exports = mongoose.model("SubCategory", subCategorySchema);

@@ -1,3 +1,15 @@
 node_modules/
 
+# Secrets - never commit these (config.env.example is the safe template)
 config.env
+.env
+.env.*
+!config.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db

@@ -1,0 +1,32 @@
+[
+  {
+    "_id": "66a1000000000000000000a1",
+    "name": "Bags",
+    "category": "61b2a9d869d54640ca3d7293"
+  },
+  {
+    "_id": "66a1000000000000000000a2",
+    "name": "T-Shirts",
+    "category": "61b2a9d869d54640ca3d7293"
+  },
+  {
+    "_id": "66a1000000000000000000a3",
+    "name": "Accessories",
+    "category": "61b2a9d869d54640ca3d7293"
+  },
+  {
+    "_id": "66a1000000000000000000a4",
+    "name": "Jackets",
+    "category": "61b7a02868424f7846ce1d6f"
+  },
+  {
+    "_id": "66a1000000000000000000a5",
+    "name": "Jewelry",
+    "category": "61b2a8dd4bad61f4cc4a98ea"
+  },
+  {
+    "_id": "66a1000000000000000000a6",
+    "name": "Storage",
+    "category": "61b2a8dd4bad61f4cc4a98ea"
+  }
+]

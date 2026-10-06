@@ -1,22 +1,26 @@
 const mongoose = require("mongoose");
+const slugifyPlugin = require("../utils/slugifyPlugin");
 
 const brandSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      require: [true, "Brand require"],
-      unique: [true, "Brand must be unique"],
-      minLength: [3, "Too short Brand name"],
-      maxLenth: [25, "Too long Brand name"],
+      required: [true, "Brand name is required"],
+      trim: true,
+      unique: true,
+      minlength: [3, "Too short Brand name"],
+      maxlength: [32, "Too long Brand name"],
     },
     slug: {
       type: String,
       lowercase: true,
     },
-    iamges: String,
+    image: String,
   },
 
   { timestamps: true },
 );
-module.exports = mongoose.model("Brand", brandSchema);
 
+brandSchema.plugin(slugifyPlugin, { from: "name" });
+
+module.exports = mongoose.model("Brand", brandSchema);
