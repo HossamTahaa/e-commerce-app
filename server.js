@@ -30,6 +30,8 @@ dbConnection();
  
 //middleware
 app.use(express.json());
+// make the uploads folder public
+app.use(express.static(path.join(__dirname, "uploads")));
 
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));

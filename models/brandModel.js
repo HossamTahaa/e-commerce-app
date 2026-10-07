@@ -23,4 +23,14 @@ const brandSchema = new mongoose.Schema(
 
 brandSchema.plugin(slugifyPlugin, { from: "name" });
 
+// "nike.jpeg" -> "http://localhost:8000/brands/nike.jpeg" so the frontend can show it
+const setImageURL = (doc) => {
+  if (doc.image) {
+    doc.image = `${process.env.BASE_URL}/brands/${doc.image}`;
+  }
+};
+
+brandSchema.post("init", (doc) => setImageURL(doc)); // get all, get one, update
+brandSchema.post("save", (doc) => setImageURL(doc)); // create
+
 module.exports = mongoose.model("Brand", brandSchema);

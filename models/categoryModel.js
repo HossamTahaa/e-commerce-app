@@ -23,6 +23,16 @@ const categorySchema = new mongoose.Schema(
 
 categorySchema.plugin(slugifyPlugin, { from: "name" });
 
+// "phones.jpeg" -> "http://localhost:8000/categories/phones.jpeg" so the frontend can show it
+const setImageURL = (doc) => {
+  if (doc.image) {
+    doc.image = `${process.env.BASE_URL}/categories/${doc.image}`;
+  }
+};
+
+categorySchema.post("init", (doc) => setImageURL(doc)); // get all, get one, update
+categorySchema.post("save", (doc) => setImageURL(doc)); // create
+
 const CategoryModel = mongoose.model("Category", categorySchema);
 
 module.exports = CategoryModel;
