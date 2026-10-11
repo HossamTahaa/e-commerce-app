@@ -86,6 +86,23 @@ productSchema.pre(/^find/, function () {
   });
 });
 
+// "product-xxx.jpeg" -> "http://localhost:8000/products/product-xxx.jpeg"
+// values that are already a full link (the seed data) are left as they are
+const toImageURL = (image) =>
+  image.startsWith('http') ? image : `${process.env.BASE_URL}/products/${image}`;
+
+const setImageURL = (doc) => {
+  if (doc.imageCover) {
+    doc.imageCover = toImageURL(doc.imageCover);
+  }
+  if (doc.images) {
+    doc.images = doc.images.map((image) => toImageURL(image));
+  }
+};
+
+productSchema.post('init', (doc) => setImageURL(doc)); // get all, get one, update
+productSchema.post('save', (doc) => setImageURL(doc)); // create
+
 module.exports = mongoose.model('Product', productSchema);
     // to enable virtual populate
 //     toJSON: { virtuals: true },
@@ -98,37 +115,3 @@ module.exports = mongoose.model('Product', productSchema);
 //   foreignField: 'product',
 //   localField: '_id',
 // });
-
-// // Mongoose query middleware
-// productSchema.pre(/^find/, function (next) {
-//   this.populate({
-//     path: 'category',
-//     select: 'name -_id',
-//   });
-//   next();
-// });
-
-// const setImageURL = (doc) => {
-//   if (doc.imageCover) {
-//     const imageUrl = `${process.env.BASE_URL}/products/${doc.imageCover}`;
-//     doc.imageCover = imageUrl;
-//   }
-//   if (doc.images) {
-//     const imagesList = [];
-//     doc.images.forEach((image) => {
-//       const imageUrl = `${process.env.BASE_URL}/products/${image}`;
-//       imagesList.push(imageUrl);
-//     });
-//     doc.images = imagesList;
-//   }
-// };
-// // findOne, findAll and update
-// productSchema.post('init', (doc) => {
-//   setImageURL(doc);
-// });
-
-// // create
-// productSchema.post('save', (doc) => {
-//   setImageURL(doc);
-// });
-

@@ -24,3 +24,7 @@ const upload = multer({
 
 // reads form-data: text -> req.body, the file in field `fieldName` -> req.file
 exports.uploadSingleImage = (fieldName) => upload.single(fieldName);
+
+// reads form-data with several file fields -> req.files
+// e.g. [{ name: "imageCover", maxCount: 1 }, { name: "images", maxCount: 5 }]
+exports.uploadMultipleImages = (arrayOfFields) => upload.fields(arrayOfFields);
