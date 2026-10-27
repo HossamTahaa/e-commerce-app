@@ -31,6 +31,13 @@ const sendErrorForProduction = (err, res) => {
     message: err.message,
   });
 };
+// token was changed / signed with another key  ->  401 instead of 500
+const handleJwtInvalidSignature = () =>
+  new ApiError("Invalid token, please login again", 401);
+
+// token is older than JWT_EXPIRE_TIME  ->  401 instead of 500
+const handleJwtExpired = () =>
+  new ApiError("Expired token, please login again", 401);
 
 const globalError = (err, req, res, next) => {
   let error = err;
@@ -38,6 +45,8 @@ const globalError = (err, req, res, next) => {
   if (error.name === "CastError") error = handleCastError(error);
   else if (error.code === 11000) error = handleDuplicateKeyError(error);
   else if (error.name === "ValidationError") error = handleValidationError(error);
+  else if (error.name === "JsonWebTokenError") error = handleJwtInvalidSignature();
+  else if (error.name === "TokenExpiredError") error = handleJwtExpired();
 
   error.statusCode = error.statusCode || 500;
   error.status = error.status || "error";

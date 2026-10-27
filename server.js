@@ -7,6 +7,8 @@ const categoryRoute = require("./routes/categoryRoute");
 const subCategoryRoute = require("./routes/subCategoryRoute");
 const productRoute = require("./routes/productRoute");
 const brandRoute = require("./routes/brandRoute");
+const userRoute = require("./routes/userRoute");
+const authRoute = require("./routes/authRoute");
 const ApiError = require("./utils/apiError");
 const globalError = require("./middleware/errorMiddleware");
 
@@ -42,6 +44,8 @@ app.use("/api/v1/categories", categoryRoute);
 app.use("/api/v1/subcategories", subCategoryRoute);
 app.use("/api/v1/brands", brandRoute);
 app.use("/api/v1/products", productRoute);
+app.use("/api/v1/users", userRoute);
+app.use("/api/v1/auth", authRoute);
 
 //if the path worng
 app.use((req, res, next) => {
