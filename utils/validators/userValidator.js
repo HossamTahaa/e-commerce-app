@@ -134,3 +134,72 @@ exports.deleteUserValidator = [
 
   validatorMiddleware,
 ];
+
+// lesson 126: same as changeUserPasswordValidator, but for the LOGGED user
+// (the id comes from the token -> req.user._id, so protect must run first)
+exports.changeLoggedUserPasswordValidator = [
+  check("currentPassword")
+    .notEmpty()
+    .withMessage("You must enter your current password"),
+
+  check("passwordConfirm")
+    .notEmpty()
+    .withMessage("You must enter the password confirm"),
+
+  check("password")
+    .notEmpty()
+    .withMessage("You must enter the new password")
+    .bail()
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters")
+    .bail()
+    .custom(async (password, { req }) => {
+      // the current password is correct?
+      const user = await User.findById(req.user._id).select("+password");
+      const isCorrect = await bcrypt.compare(
+        req.body.currentPassword || "",
+        user.password,
+      );
+      if (!isCorrect) {
+        throw new Error("Incorrect current password");
+      }
+
+      // the new password matches the confirmation?
+      if (password !== req.body.passwordConfirm) {
+        throw new Error("Password confirmation does not match");
+      }
+
+      return true;
+    }),
+
+  validatorMiddleware,
+];
+
+// lesson 127: the logged user edits his own name / email / phone
+exports.updateLoggedUserValidator = [
+  check("name")
+    .optional()
+    .isLength({ min: 3 })
+    .withMessage("Too short user name"),
+
+  check("email")
+    .optional()
+    .isEmail()
+    .withMessage("Invalid email address")
+    .bail()
+    .custom((val, { req }) =>
+      User.findOne({ email: val.toLowerCase() }).then((user) => {
+        // used by ANOTHER user? (your own email is fine)
+        if (user && user._id.toString() !== req.user._id.toString()) {
+          return Promise.reject(new Error("Email already in use"));
+        }
+      }),
+    ),
+
+  check("phone")
+    .optional()
+    .isMobilePhone(["ar-EG", "ar-SA"])
+    .withMessage("Invalid phone number, only Egypt and Saudi numbers are accepted"),
+
+  validatorMiddleware,
+];

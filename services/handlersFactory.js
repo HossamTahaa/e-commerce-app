@@ -9,9 +9,7 @@ exports.getAll = (Model, populationOpt) =>
     // req.filterObj is set by nested routes (/categories/:categoryId/subcategories)
     const filter = req.filterObj || {};
 
-    const features = new ApiFeatures(Model.find(filter), req.query)
-      .filter()
-      .search(Model.modelName);
+    const features = new ApiFeatures(Model.find(filter), req.query).filter().search(Model.modelName);
 
     // count the *same* conditions the query uses, otherwise numberOfPages lies
     const documentsCount = await Model.countDocuments(
